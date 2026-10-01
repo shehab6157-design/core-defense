@@ -1,11 +1,12 @@
-"""Brain: correlates validated facts and PROPOSES actions only (R4, R5, T1, T2).
+"""Brain: correlates validated facts and PROPOSES actions only (R4, R5, T1, T2, T7).
 
-- Accepts only facts that pass the barrier schema. Anything else is
+- Accepts only facts that pass the shared schema. Anything else is
   treated as evidence of tampering, never as input.
 - Can only propose actions from a fixed allowlist. It cannot execute
   anything - arms decide (Phase 2: quorum + reversible actions).
-- Strong actions (isolate) need evidence from at least two INDEPENDENT
-  sensors. Two facts from the same log file are one sensor, not two.
+- Strong actions (isolate) need SUSPICIOUS evidence from at least two
+  INDEPENDENT sensors. Normal activity is never counted as evidence,
+  and two facts from the same sensor count once.
 - If the brain dies, arms keep defending on their own (ring heartbeats).
 """
 from __future__ import annotations
@@ -18,13 +19,17 @@ from barrier import barrier as br
 ACTIONS = ("watch", "collect_evidence", "deploy_decoy", "limit_access", "isolate")
 STRONG = frozenset({"isolate"})
 SENSORS = frozenset({"host-log", "ring", "network"})
+NETWORK_KINDS = frozenset({"lateral_movement"})
 REASONS = frozenset({
     "injection-attempt", "brute-force", "login-after-brute-force",
     "privilege-after-suspicious-login", "account-after-suspicious-login",
     "arm-silent", "arm-silent-on-suspicious-host", "invalid-fact",
+    "lateral-movement", "lateral-movement-confirmed",
 })
 BRUTE_FORCE_THRESHOLD = 5
-WINDOW = 300.0  # seconds of memory for correlation
+WINDOW = 300.0          # seconds of memory for correlation
+DECOY_CONFIDENCE = 70   # network-only alerts at or above this -> deploy_decoy
+CONFIRM_CONFIDENCE = 50 # with a second sensor, at or above this -> isolate
 
 
 class BrainError(Exception):
@@ -61,7 +66,7 @@ class Brain:
         self.inventory = frozenset(inventory)
         self.proposals: list[Proposal] = []
         self._fails = defaultdict(deque)       # (host, src_ip) -> failure times
-        self._seen = defaultdict(deque)        # host -> (time, sensor)
+        self._evidence = defaultdict(deque)    # host -> (time, sensor) of SUSPICIOUS events only
         self._suspicious: dict[str, float] = {}
 
     # ---- helpers ----
@@ -71,10 +76,11 @@ class Brain:
             q.popleft()
 
     def _note(self, host, sensor, now):
-        self._seen[host].append((now, sensor))
+        """Record SUSPICIOUS evidence. Normal activity must never be noted."""
+        self._evidence[host].append((now, sensor))
 
     def _sensors(self, host, now):
-        q = self._seen[host]
+        q = self._evidence[host]
         while q and now - q[0][0] > WINDOW:
             q.popleft()
         return tuple(sorted({s for _, s in q}))
@@ -86,7 +92,7 @@ class Brain:
     def _escalate(self, host, reason, now):
         sensors = self._sensors(host, now)
         action = "isolate" if len(sensors) >= 2 else "limit_access"
-        return Proposal(action, host, reason, sensors, len(self._seen[host]))
+        return Proposal(action, host, reason, sensors, len(self._evidence[host]))
 
     def _emit(self, props):
         self.proposals.extend(props)
@@ -94,35 +100,53 @@ class Brain:
 
     # ---- inputs ----
     def ingest(self, fact, now: float) -> list[Proposal]:
-        """Take one barrier fact. Returns any new proposals."""
+        """Take one validated fact. Returns any new proposals."""
         try:
             br.validate_fact(fact, self.inventory)
         except br.BarrierError:
-            # The barrier (or something pretending to be it) sent bad data
             return self._emit([Proposal("collect_evidence", "unknown", "invalid-fact", ("host-log",), 1)])
         kind, host = fact["kind"], fact["host"]
-        self._note(host, "host-log", now)
         out = []
         if kind == "injection_attempt":
+            self._note(host, "host-log", now)
             out.append(Proposal("collect_evidence", host, "injection-attempt", ("host-log",), 1))
         elif kind == "login_failed":
             q = self._fails[(host, fact["src_ip"])]
             q.append(now)
             self._prune_times(q, now)
             if len(q) == BRUTE_FORCE_THRESHOLD:
+                self._note(host, "host-log", now)
                 out.append(Proposal("watch", host, "brute-force", ("host-log",), len(q)))
         elif kind == "login_success":
             q = self._fails.get((host, fact["src_ip"]))
             if q is not None:
                 self._prune_times(q, now)
                 if len(q) >= BRUTE_FORCE_THRESHOLD:
+                    self._note(host, "host-log", now)
                     self._suspicious[host] = now
                     out.append(self._escalate(host, "login-after-brute-force", now))
         elif kind in ("privilege_use", "account_created") and self._suspicious_now(host, now):
+            self._note(host, "host-log", now)
             reason = ("privilege-after-suspicious-login" if kind == "privilege_use"
                       else "account-after-suspicious-login")
             out.append(self._escalate(host, reason, now))
+        elif kind == "lateral_movement":
+            out.append(self._network(fact, host, now))
         return self._emit(out)
+
+    def _network(self, fact, host, now):
+        if host == "unknown":
+            # Source not in our inventory: we cannot act on it, only watch
+            return Proposal("watch", "unknown", "lateral-movement", ("network",), 1)
+        self._note(host, "network", now)
+        self._suspicious[host] = now
+        sensors = self._sensors(host, now)
+        n = len(self._evidence[host])
+        if len(sensors) >= 2 and fact["confidence"] >= CONFIRM_CONFIDENCE:
+            return Proposal("isolate", host, "lateral-movement-confirmed", sensors, n)
+        if fact["confidence"] >= DECOY_CONFIDENCE:
+            return Proposal("deploy_decoy", host, "lateral-movement", sensors, n)
+        return Proposal("watch", host, "lateral-movement", sensors, n)
 
     def ring_alert(self, peer: str, now: float) -> list[Proposal]:
         """A ring 'silent' alert about an arm. Arms are named after the host they guard."""

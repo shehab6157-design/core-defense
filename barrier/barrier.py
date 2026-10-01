@@ -219,3 +219,15 @@ class Barrier:
         for f in facts:
             validate_fact(f, self.inventory)
         return facts
+
+
+# ---------- network sensor facts (produced by the APIS arm, not by the barrier) ----------
+
+def _techniques(v):
+    return (isinstance(v, list) and len(v) <= 5 and len(set(v)) == len(v)
+            and all(isinstance(t, str) and re.fullmatch(r"t\d{4}(?:\.\d{3})?", t) for t in v))
+
+
+SCHEMA["lateral_movement"] = {
+    "src_ip": _ip, "dst_ip": _ip, "confidence": _int_range(0, 100), "techniques": _techniques,
+}
