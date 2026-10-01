@@ -42,3 +42,12 @@
   and fullwidth unicode tricks) -> 60 flagged, 0 crossed as text
 - 9 benign log lines -> 0 false alarms
 - 114 tests passing
+
+### Step 5 - Brain (done 2026-10-01)
+- Proposes only; fixed allowlist (watch, collect_evidence, deploy_decoy, limit_access, isolate)
+- Unsafe actions cannot even be constructed (tested: disable_monitoring, delete_logs, ...)
+- isolate requires two INDEPENDENT sensors (host-log + ring); same log twice = one sensor
+- Invalid facts treated as tampering evidence, never as input
+- T1 END-TO-END: 60 attacks -> 60 evidence proposals, 0 harmful actions
+- T2: arms keep detecting after brain dies (tested)
+- 129 tests passing
