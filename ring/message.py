@@ -137,3 +137,7 @@ def verify(raw: bytes, ca_cert, cache: ReplayCache, now: float | None = None) ->
 
 # Operator decisions (approve / deny / reset) - only the operator role may send them
 ALLOWED["approval"] = {"operator"}
+
+
+# Operator tolerance for known-harmless low-level alert patterns
+ALLOWED["tolerance"] = {"operator"}

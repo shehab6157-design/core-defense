@@ -108,3 +108,11 @@ Open items carried forward:
 - 6 normal process patterns + normal file activity -> 0 false alarms
 - ZERO-DAY STORY: no signature -> server spawns shell (limit_access) ->
   ransomware-like file burst (isolate, confirmed by process + file)
+
+### Step 3b - Alert pheromones + tolerance (done 2026-10-01)
+- Alert strength decays (half-life 10 min) unless reinforced; strong actions always shown
+- Signed operator tolerance for low-level patterns only; damage/serious alerts never tolerable;
+  tolerance never hides escalation; max 168 h
+- Triage affects what the human sees only - never blocks a defensive action
+- NOISY DAY (synthetic, seed 7): see test output for raw alerts -> pages, real attack paged
+  (real-data evaluation still to do)
