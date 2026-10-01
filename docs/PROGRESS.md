@@ -26,3 +26,10 @@
 - Forged heartbeats rejected + logged as evidence (T6 partial)
 - Monotonic clock: changing system time cannot hide silence
 - 31 tests passing
+
+### Step 3b - Live ring demo (done 2026-10-01)
+- 3 real arm processes, signed UDP heartbeats on localhost
+- kill -9 on arm-02 at 12:41:30 -> both surviving arms alerted at 12:41:34
+  (~4s after kill, 6.1s after last heartbeat), independently, no central server
+- Fake "all clear" message rejected + logged as evidence
+- Known gap: heartbeats signed but not encrypted yet (mTLS before multi-machine)
