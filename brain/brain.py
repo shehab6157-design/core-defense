@@ -18,13 +18,13 @@ from barrier import barrier as br
 
 ACTIONS = ("watch", "collect_evidence", "deploy_decoy", "limit_access", "isolate")
 STRONG = frozenset({"isolate"})
-SENSORS = frozenset({"host-log", "ring", "network"})
-NETWORK_KINDS = frozenset({"lateral_movement"})
+SENSORS = frozenset({"host-log", "ring", "network", "agent"})
 REASONS = frozenset({
     "injection-attempt", "brute-force", "login-after-brute-force",
     "privilege-after-suspicious-login", "account-after-suspicious-login",
     "arm-silent", "arm-silent-on-suspicious-host", "invalid-fact",
     "lateral-movement", "lateral-movement-confirmed",
+    "agent-anomaly", "agent-anomaly-confirmed",
 })
 BRUTE_FORCE_THRESHOLD = 5
 WINDOW = 300.0          # seconds of memory for correlation
@@ -132,6 +132,8 @@ class Brain:
             out.append(self._escalate(host, reason, now))
         elif kind == "lateral_movement":
             out.append(self._network(fact, host, now))
+        elif kind == "agent_anomaly":
+            out.append(self._agent(fact, host, now))
         return self._emit(out)
 
     def _network(self, fact, host, now):
@@ -147,6 +149,16 @@ class Brain:
         if fact["confidence"] >= DECOY_CONFIDENCE:
             return Proposal("deploy_decoy", host, "lateral-movement", sensors, n)
         return Proposal("watch", host, "lateral-movement", sensors, n)
+
+    def _agent(self, fact, host, now):
+        if fact["tier"] != "alert":
+            # A single weak signal is worth watching, not counting as evidence
+            return Proposal("watch", host, "agent-anomaly", ("agent",), 1)
+        self._note(host, "agent", now)
+        self._suspicious[host] = now
+        sensors = self._sensors(host, now)
+        reason = "agent-anomaly-confirmed" if len(sensors) >= 2 else "agent-anomaly"
+        return self._escalate(host, reason, now)
 
     def ring_alert(self, peer: str, now: float) -> list[Proposal]:
         """A ring 'silent' alert about an arm. Arms are named after the host they guard."""

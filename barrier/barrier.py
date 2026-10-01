@@ -231,3 +231,19 @@ def _techniques(v):
 SCHEMA["lateral_movement"] = {
     "src_ip": _ip, "dst_ip": _ip, "confidence": _int_range(0, 100), "techniques": _techniques,
 }
+
+
+# ---------- agent sensor facts (produced by the MCP proxy arm) ----------
+
+AGENT_SIGNALS = ("unknown_agent", "new_tool", "off_pattern", "payload_outlier", "sequence_spike")
+
+
+def _agent_signals(v):
+    return (isinstance(v, list) and 1 <= len(v) <= len(AGENT_SIGNALS) and len(set(v)) == len(v)
+            and all(isinstance(s, str) and s in AGENT_SIGNALS for s in v))
+
+
+SCHEMA["agent_anomaly"] = {
+    "agent": _ident("agent"), "tool": _ident("tool"),
+    "signals": _agent_signals, "tier": _enum("alert", "observation"),
+}

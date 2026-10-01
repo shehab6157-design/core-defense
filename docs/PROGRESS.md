@@ -51,3 +51,19 @@
 - T1 END-TO-END: 60 attacks -> 60 evidence proposals, 0 harmful actions
 - T2: arms keep detecting after brain dies (tested)
 - 129 tests passing
+
+### Step 6 - Arms: APIS + MCP proxy adapters (done 2026-10-01)
+- APIS arm: network sensor; alerts -> typed 'lateral_movement' facts (confidence 0-100)
+- MCP arm: agent sensor; agent/tool names pseudonymized, free text never read,
+  tier/signal consistency check rejects tampered records
+- Brain fix: only SUSPICIOUS events count as sensor evidence (normal logs never do, T7)
+- Four independent sensors: host-log, network, agent, ring
+- Full attack chain test: brute force -> login -> hijacked agent -> lateral movement
+  -> arm killed => watch, limit_access, then isolate confirmed by 2, 3, then 4 sensors
+- 159 tests passing
+
+## PHASE 1 COMPLETE (2026-10-01)
+Open items carried forward:
+- Barrier not yet OS-sandboxed (restricted user + systemd limits)
+- Ring traffic signed but not encrypted (mTLS before multi-machine)
+- CA key unencrypted on dev VM (Phase 5, T12)
