@@ -116,4 +116,4 @@ Open items carried forward:
 - Triage affects what the human sees only - never blocks a defensive action
 - NOISY DAY (synthetic, seed 7): see test output for raw alerts -> pages, real attack paged
   (real-data evaluation still to do)
-- FIX: show threshold 2.0 -> 1.5 (edge-of-threshold bug caught by tests). Noisy day: 303 raw -> N pages (X% less), attack paged
+- FIX: show threshold 2.0 -> 1.5 (edge-of-threshold bug caught by tests). Noisy day: 303 raw -> 5 pages (98% less), attack paged
