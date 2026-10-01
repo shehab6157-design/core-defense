@@ -74,3 +74,9 @@ Open items carried forward:
 - Plain-language explanations from fixed templates only (no input text)
 - Escalate stronger-first-then-undo-weaker (no protection gap); never downgrade
 - Dry-run backend only (no firewall changes yet)
+
+### Step 2b - Quorum gate (done 2026-10-01)
+- Arms run their OWN brain copy and verify every proposal before acting
+- isolate needs 2+ claimed sensors confirmed locally; limit_access needs 1+
+- Also checks: trusted brain, not replayed, valid proposal, responsible host
+- RESULT: stolen brain key -> 20 signed harmful proposals -> 0 executed, 20 refusals logged

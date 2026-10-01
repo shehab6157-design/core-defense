@@ -168,3 +168,11 @@ class Brain:
         if self._suspicious_now(peer, now):
             return self._emit([self._escalate(peer, "arm-silent-on-suspicious-host", now)])
         return self._emit([Proposal("watch", peer, "arm-silent", ("ring",), 1)])
+
+
+def _evidence_sensors(self, host: str, now: float) -> set:
+    """Sensors that reported SUSPICIOUS evidence about host within the window."""
+    return set(self._sensors(host, now))
+
+
+Brain.evidence_sensors = _evidence_sensors
