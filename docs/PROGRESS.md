@@ -12,3 +12,10 @@
 - Keys stored mode 600, secrets/ excluded from git
 - 11 tests passing
 - Known gap: CA key unencrypted on dev VM -> fix in Phase 5 (T12)
+
+### Step 2 - Signed messages (done 2026-10-01)
+- Every message: sender certificate + signature + timestamp + one-time nonce
+- Rejects: altered, forged (foreign CA / stolen cert without key), replayed,
+  stale, impersonated, oversized, malformed, wrong role for message type
+- Role rules: only brain sends proposals, only barrier sends facts
+- 24 tests passing (T5 covered)
