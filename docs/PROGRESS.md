@@ -67,3 +67,10 @@ Open items carried forward:
 - Barrier not yet OS-sandboxed (restricted user + systemd limits)
 - Ring traffic signed but not encrypted (mTLS before multi-machine)
 - CA key unencrypted on dev VM (Phase 5, T12)
+
+## Phase 2 - Reflexes + Trust
+### Step 2a - Action executor (done 2026-10-01)
+- Every action reversible, expiring (isolate 10 min ... watch 1 h) unless renewed or pinned
+- Plain-language explanations from fixed templates only (no input text)
+- Escalate stronger-first-then-undo-weaker (no protection gap); never downgrade
+- Dry-run backend only (no firewall changes yet)
