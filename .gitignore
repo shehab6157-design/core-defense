@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.pyc
+*.key
+*.pem
+*.crt
+secrets/
+*.env
+data/raw/
