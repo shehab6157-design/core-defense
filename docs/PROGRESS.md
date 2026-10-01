@@ -86,3 +86,16 @@ Open items carried forward:
 - Max 3 strong actions / 10 min network-wide; breaker trips and stays tripped until operator reset
 - Only trusted operator identity can approve/deny/reset; replays rejected
 - RESULT: mass-isolation attack -> 20 requests -> 3 executed, 17 held, breaker tripped
+
+### Step 2d - Tamper-evident audit trail (done 2026-10-01)
+- Hash-chained append-only log (mode 600, fsync); edits/deletes/reorders detected at exact entry
+- Truncation detected via anchor (head kept elsewhere) - honest limit documented + tested
+- Gate, executor, safety layer wired via audited subclasses (tested logic unchanged)
+- Full Phase 2 story audited: accept, stolen-key refusal, protected hold, operator approval, expiry
+- Tamper demo: editing entry 3 to hide an attack -> chain breaks at entry 3
+- 214 tests passing
+
+## PHASE 2 CORE COMPLETE (2026-10-01)
+Open items carried forward:
+- Executor uses dry-run backend; real firewall backend (never locking out operator) still to build
+- Audit anchor not yet shared with ring peers (truncation check needs an external head)
