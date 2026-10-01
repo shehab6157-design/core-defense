@@ -19,3 +19,10 @@
   stale, impersonated, oversized, malformed, wrong role for message type
 - Role rules: only brain sends proposals, only barrier sends facts
 - 24 tests passing (T5 covered)
+
+### Step 3 - Heartbeat monitor (done 2026-10-01)
+- Signed heartbeats every 2s; silence > 6s raises ONE alert
+- Measured (simulated): time-to-alert 6.5s after last heartbeat
+- Forged heartbeats rejected + logged as evidence (T6 partial)
+- Monotonic clock: changing system time cannot hide silence
+- 31 tests passing
