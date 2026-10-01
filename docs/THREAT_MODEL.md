@@ -64,3 +64,15 @@ trusted because of WHERE it comes from, only because of a valid signature.
 - [ ] Barrier has no network or action permissions
 - [ ] Heartbeat silence raises an alert within a measured time
 - [ ] Tests for T1, T2, T3, T5 exist and pass
+
+## 8. Hardening rules (referenced as R1-R10)
+- R1 Zero trust: every component has an identity; every message encrypted and signed
+- R2 Least privilege per arm
+- R3 Protect the root of trust: keys separate, short-lived, rotated
+- R4 Brain reads data, never takes orders from data (fixed action allowlist)
+- R5 Two independent sources required for strong actions
+- R6 Only clean, signed arms are allowed in
+- R7 Fail safe: a crash means keep watching and logging, never "allow all"
+- R8 Small attack surface: few ports, pinned dependencies, vulnerability scanning
+- R9 Tamper-proof memory: hash-chained audit trail
+- R10 Attack myself constantly in the lab
