@@ -16,6 +16,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from brain.brain import Brain, BrainError, Proposal
+from arms.safety import PendingApproval
 from ring import message as msg
 
 NEED_CORROBORATION = {"isolate": 2, "limit_access": 1}
@@ -84,4 +85,6 @@ class Gate:
         if len(confirmed) < need:
             return self._refuse("not-corroborated", p)
         record = self.executor.apply(p, now)
+        if isinstance(record, PendingApproval):
+            return Decision(False, "awaiting-approval", p, record)
         return Decision(True, "accepted", p, record)

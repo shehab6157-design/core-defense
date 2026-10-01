@@ -80,3 +80,9 @@ Open items carried forward:
 - isolate needs 2+ claimed sensors confirmed locally; limit_access needs 1+
 - Also checks: trusted brain, not replayed, valid proposal, responsible host
 - RESULT: stolen brain key -> 20 signed harmful proposals -> 0 executed, 20 refusals logged
+
+### Step 2c - Protected assets + circuit breaker (done 2026-10-01)
+- Strong actions on protected hosts held for signed operator approval
+- Max 3 strong actions / 10 min network-wide; breaker trips and stays tripped until operator reset
+- Only trusted operator identity can approve/deny/reset; replays rejected
+- RESULT: mass-isolation attack -> 20 requests -> 3 executed, 17 held, breaker tripped

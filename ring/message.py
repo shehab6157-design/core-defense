@@ -133,3 +133,7 @@ def verify(raw: bytes, ca_cert, cache: ReplayCache, now: float | None = None) ->
     if not cache.check_and_add(data["nonce"], now):
         raise MessageError("replayed message")
     return Message(data["type"], name, role, float(data["ts"]), data["nonce"], data["body"])
+
+
+# Operator decisions (approve / deny / reset) - only the operator role may send them
+ALLOWED["approval"] = {"operator"}
