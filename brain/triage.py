@@ -20,7 +20,7 @@ from ring import message as msg
 
 WEIGHT = {"watch": 1.0, "collect_evidence": 1.5, "deploy_decoy": 2.0, "limit_access": 4.0, "isolate": 8.0}
 HALF_LIFE = 600.0          # seconds for an alert's strength to halve
-SHOW_THRESHOLD = 2.0
+SHOW_THRESHOLD = 1.5   # 2 weak alerts within ~10 min, or 1 medium alert
 ALWAYS_SHOW = frozenset({"limit_access", "isolate"})
 TOLERABLE = frozenset({"brute-force", "arm-silent", "lateral-movement", "agent-anomaly"})
 MAX_TOLERANCE_HOURS = 168
