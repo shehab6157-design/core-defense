@@ -33,3 +33,12 @@
   (~4s after kill, 6.1s after last heartbeat), independently, no central server
 - Fake "all clear" message rejected + logged as evidence
 - Known gap: heartbeats signed but not encrypted yet (mTLS before multi-machine)
+
+### Step 4 - Barrier (done 2026-10-01)
+- Untrusted log lines -> strict typed facts (enums, numbers, IPs, known names, pseudonyms)
+- No free text can cross: every value matches [a-z0-9_.:-]{1,64}
+- Personal usernames/unknown processes/unknown hosts -> keyed pseudonyms
+- T1 RESULT: 60 injection payloads (15 attacks x 4 placements, incl. zero-width
+  and fullwidth unicode tricks) -> 60 flagged, 0 crossed as text
+- 9 benign log lines -> 0 false alarms
+- 114 tests passing
