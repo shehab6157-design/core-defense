@@ -99,3 +99,12 @@ Open items carried forward:
 Open items carried forward:
 - Executor uses dry-run backend; real firewall backend (never locking out operator) still to build
 - Audit anchor not yet shared with ring peers (truncation check needs an external head)
+
+## Phase 3 - Innate immunity
+### Step 3a - Damage detection / Danger Theory (done 2026-10-01)
+- Damage signals independent of any CVE: server spawns shell (process sensor),
+  account added to admin group (host logs), mass file changes (file sensor)
+- Process + file sensor adapters: known names readable, others pseudonymized, malformed rejected
+- 6 normal process patterns + normal file activity -> 0 false alarms
+- ZERO-DAY STORY: no signature -> server spawns shell (limit_access) ->
+  ransomware-like file burst (isolate, confirmed by process + file)

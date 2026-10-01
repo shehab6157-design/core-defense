@@ -1,12 +1,14 @@
-"""Brain: correlates validated facts and PROPOSES actions only (R4, R5, T1, T2, T7).
+"""Brain: correlates validated facts and PROPOSES actions only (R4, R5, T1, T2, T7, P3).
 
 - Accepts only facts that pass the shared schema. Anything else is
   treated as evidence of tampering, never as input.
 - Can only propose actions from a fixed allowlist. It cannot execute
-  anything - arms decide (Phase 2: quorum + reversible actions).
+  anything - arms decide (quorum gate + safety layer).
 - Strong actions (isolate) need SUSPICIOUS evidence from at least two
   INDEPENDENT sensors. Normal activity is never counted as evidence,
   and two facts from the same sensor count once.
+- Damage signals (Danger Theory) catch attacks with no known signature:
+  a server spawning a shell, admin rights granted, mass file changes.
 - If the brain dies, arms keep defending on their own (ring heartbeats).
 """
 from __future__ import annotations
@@ -18,18 +20,22 @@ from barrier import barrier as br
 
 ACTIONS = ("watch", "collect_evidence", "deploy_decoy", "limit_access", "isolate")
 STRONG = frozenset({"isolate"})
-SENSORS = frozenset({"host-log", "ring", "network", "agent"})
+SENSORS = frozenset({"host-log", "ring", "network", "agent", "process", "file"})
 REASONS = frozenset({
     "injection-attempt", "brute-force", "login-after-brute-force",
     "privilege-after-suspicious-login", "account-after-suspicious-login",
     "arm-silent", "arm-silent-on-suspicious-host", "invalid-fact",
     "lateral-movement", "lateral-movement-confirmed",
     "agent-anomaly", "agent-anomaly-confirmed",
+    "service-spawned-shell", "privilege-granted", "mass-file-change",
 })
 BRUTE_FORCE_THRESHOLD = 5
 WINDOW = 300.0          # seconds of memory for correlation
 DECOY_CONFIDENCE = 70   # network-only alerts at or above this -> deploy_decoy
 CONFIRM_CONFIDENCE = 50 # with a second sensor, at or above this -> isolate
+MASS_MODIFIED = 200     # files modified ...
+MASS_RENAMED = 50       # ... or renamed ...
+MASS_WINDOW = 120       # ... within this many seconds = damage
 
 
 class BrainError(Exception):
@@ -85,6 +91,10 @@ class Brain:
             q.popleft()
         return tuple(sorted({s for _, s in q}))
 
+    def evidence_sensors(self, host: str, now: float) -> set:
+        """Sensors that reported SUSPICIOUS evidence about host within the window."""
+        return set(self._sensors(host, now))
+
     def _suspicious_now(self, host, now):
         t = self._suspicious.get(host)
         return t is not None and now - t <= WINDOW
@@ -93,6 +103,11 @@ class Brain:
         sensors = self._sensors(host, now)
         action = "isolate" if len(sensors) >= 2 else "limit_access"
         return Proposal(action, host, reason, sensors, len(self._evidence[host]))
+
+    def _damage(self, host, sensor, reason, now):
+        self._note(host, sensor, now)
+        self._suspicious[host] = now
+        return self._escalate(host, reason, now)
 
     def _emit(self, props):
         self.proposals.extend(props)
@@ -134,6 +149,14 @@ class Brain:
             out.append(self._network(fact, host, now))
         elif kind == "agent_anomaly":
             out.append(self._agent(fact, host, now))
+        elif kind == "group_added" and fact["group"] != "other":
+            out.append(self._damage(host, "host-log", "privilege-granted", now))
+        elif (kind == "process_spawn" and fact["parent"] in br.SERVICE_PROCS
+              and fact["child"] in br.SHELLS):
+            out.append(self._damage(host, "process", "service-spawned-shell", now))
+        elif (kind == "file_burst" and fact["window"] <= MASS_WINDOW
+              and (fact["modified"] >= MASS_MODIFIED or fact["renamed"] >= MASS_RENAMED)):
+            out.append(self._damage(host, "file", "mass-file-change", now))
         return self._emit(out)
 
     def _network(self, fact, host, now):
@@ -168,11 +191,3 @@ class Brain:
         if self._suspicious_now(peer, now):
             return self._emit([self._escalate(peer, "arm-silent-on-suspicious-host", now)])
         return self._emit([Proposal("watch", peer, "arm-silent", ("ring",), 1)])
-
-
-def _evidence_sensors(self, host: str, now: float) -> set:
-    """Sensors that reported SUSPICIOUS evidence about host within the window."""
-    return set(self._sensors(host, now))
-
-
-Brain.evidence_sensors = _evidence_sensors

@@ -193,6 +193,11 @@ class Barrier:
                     if uid >= 2**32:
                         raise ValueError("uid out of range")
                     return "account_created", {"user": self._user(m["user"]), "uid": uid}
+            elif prog in ("usermod", "gpasswd"):
+                m = USERMOD_GROUP.fullmatch(text) if prog == "usermod" else GPASSWD_ADD.fullmatch(text)
+                if m:
+                    group = m["group"] if m["group"] in ADMIN_GROUPS else "other"
+                    return "group_added", {"user": self._user(m["user"]), "group": group}
         except ValueError:
             return None
         return None
@@ -247,3 +252,20 @@ SCHEMA["agent_anomaly"] = {
     "agent": _ident("agent"), "tool": _ident("tool"),
     "signals": _agent_signals, "tier": _enum("alert", "observation"),
 }
+
+
+# ---------- Phase 3a: damage signals (Danger Theory) ----------
+
+SERVICE_PROCS = frozenset({"nginx", "apache2", "httpd", "php-fpm", "java", "node", "tomcat", "mysqld",
+                           "postgres", "redis-server", "mongod", "dockerd", "containerd"})
+SHELLS = frozenset({"sh", "bash", "dash", "zsh", "ksh", "python3", "python", "perl", "ruby",
+                    "nc", "ncat", "socat", "curl", "wget", "pwsh"})
+PROC_NAMES = SAFE_PROCS | SERVICE_PROCS | SHELLS | frozenset({"sshd", "cron", "systemd", "sudo"})
+ADMIN_GROUPS = ("sudo", "wheel", "admin", "root", "docker", "lxd", "adm")
+
+USERMOD_GROUP = re.compile(r"add '(?P<user>[^'\s]{1,64})' to (?:shadow )?group '(?P<group>[^'\s]{1,64})'")
+GPASSWD_ADD = re.compile(r"user (?P<user>\S{1,64}) added by \S{1,64} to group (?P<group>\S{1,64})")
+
+SCHEMA["group_added"] = {"user": _USER, "group": _enum(*ADMIN_GROUPS, "other")}
+SCHEMA["process_spawn"] = {"parent": _ident("proc", PROC_NAMES), "child": _ident("proc", PROC_NAMES), "user": _USER}
+SCHEMA["file_burst"] = {"modified": _int_range(0, 10**7), "renamed": _int_range(0, 10**7), "window": _int_range(1, 3600)}

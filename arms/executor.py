@@ -152,3 +152,12 @@ class Executor:
         due = [r for r in self.records.values()
                if r.state == "active" and not r.pinned and now >= r.expires_at]
         return [self.revert(r.id, now, by="expired") for r in due]
+
+
+# ---------- Phase 3a wording ----------
+REASON_TEXT.update({
+    "service-spawned-shell": "a server program started a command shell, a common sign of a successful exploit",
+    "privilege-granted": "an account was added to an administrator group",
+    "mass-file-change": "a very large number of files changed in a short time, a common sign of ransomware",
+})
+SENSOR_TEXT.update({"process": "process activity", "file": "file activity"})
