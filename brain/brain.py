@@ -7,8 +7,14 @@
 - Strong actions (isolate) need SUSPICIOUS evidence from at least two
   INDEPENDENT sensors. Normal activity is never counted as evidence,
   and two facts from the same sensor count once.
-- Damage signals (Danger Theory) catch attacks with no known signature:
-  a server spawning a shell, admin rights granted, mass file changes.
+- Damage signals (Danger Theory) catch attacks with no known signature.
+- Adaptive sensitivity (Phase 3c):
+    INFLAMMATION - a host with active suspicious evidence uses lower
+                   detection thresholds; the rest of the network does not.
+    FEVER        - when several hosts are in trouble at once, the whole
+                   network uses lower thresholds for a while.
+  Both are temporary, have fixed floors, fever is capped with a cooldown,
+  and NEITHER ever weakens the two-sensor rule for isolate.
 - If the brain dies, arms keep defending on their own (ring heartbeats).
 """
 from __future__ import annotations
@@ -29,13 +35,22 @@ REASONS = frozenset({
     "agent-anomaly", "agent-anomaly-confirmed",
     "service-spawned-shell", "privilege-granted", "mass-file-change",
 })
-BRUTE_FORCE_THRESHOLD = 5
-WINDOW = 300.0          # seconds of memory for correlation
-DECOY_CONFIDENCE = 70   # network-only alerts at or above this -> deploy_decoy
-CONFIRM_CONFIDENCE = 50 # with a second sensor, at or above this -> isolate
-MASS_MODIFIED = 200     # files modified ...
-MASS_RENAMED = 50       # ... or renamed ...
-MASS_WINDOW = 120       # ... within this many seconds = damage
+WINDOW = 300.0          # seconds of memory for correlation (also inflammation length)
+CONFIRM_CONFIDENCE = 50 # with a second sensor, at or above this -> isolate (never adapted)
+MASS_WINDOW = 120       # file bursts must happen within this many seconds
+
+# Detection thresholds. INFLAMED values are hard floors - never more sensitive.
+NORMAL = {"brute_force": 5, "decoy": 70, "mass_modified": 200, "mass_renamed": 50}
+FEVER = {"brute_force": 4, "decoy": 60, "mass_modified": 150, "mass_renamed": 40}
+INFLAMED = {"brute_force": 3, "decoy": 55, "mass_modified": 100, "mass_renamed": 25}
+FEVER_HOSTS = 3          # hosts in trouble at once -> fever
+FEVER_DURATION = 900.0   # fever lasts this long after the last trigger
+FEVER_MAX = 3600.0       # fever can never run longer than this continuously...
+FEVER_COOLDOWN = 1800.0  # ...and then must cool down this long before it can return
+
+# Kept for compatibility with earlier code
+BRUTE_FORCE_THRESHOLD = NORMAL["brute_force"]
+DECOY_CONFIDENCE = NORMAL["decoy"]
 
 
 class BrainError(Exception):
@@ -71,9 +86,14 @@ class Brain:
     def __init__(self, inventory=()):
         self.inventory = frozenset(inventory)
         self.proposals: list[Proposal] = []
-        self._fails = defaultdict(deque)       # (host, src_ip) -> failure times
-        self._evidence = defaultdict(deque)    # host -> (time, sensor) of SUSPICIOUS events only
+        self.fever_log: list[tuple] = []        # (start, end) of past fevers
+        self._fails = defaultdict(deque)        # (host, src_ip) -> failure times
+        self._bf_alerted: set = set()           # brute-force bursts already reported
+        self._evidence = defaultdict(deque)     # host -> (time, sensor) of SUSPICIOUS events only
         self._suspicious: dict[str, float] = {}
+        self._fever_start = None
+        self._fever_until = float("-inf")
+        self._fever_blocked_until = float("-inf")
 
     # ---- helpers ----
     @staticmethod
@@ -84,6 +104,7 @@ class Brain:
     def _note(self, host, sensor, now):
         """Record SUSPICIOUS evidence. Normal activity must never be noted."""
         self._evidence[host].append((now, sensor))
+        self._update_fever(now)
 
     def _sensors(self, host, now):
         q = self._evidence[host]
@@ -113,6 +134,36 @@ class Brain:
         self.proposals.extend(props)
         return props
 
+    # ---- adaptive sensitivity ----
+    def _update_fever(self, now):
+        hot = sum(1 for h in list(self._evidence) if self._sensors(h, now))
+        if self._fever_start is not None:
+            capped = now - self._fever_start >= FEVER_MAX
+            if capped or now >= self._fever_until:
+                end = min(self._fever_until, self._fever_start + FEVER_MAX)
+                self.fever_log.append((self._fever_start, end))
+                if capped:
+                    self._fever_blocked_until = end + FEVER_COOLDOWN
+                self._fever_start = None
+        if hot >= FEVER_HOSTS and now >= self._fever_blocked_until:
+            if self._fever_start is None:
+                self._fever_start = now
+            self._fever_until = now + FEVER_DURATION
+
+    def fever_active(self, now: float) -> bool:
+        self._update_fever(now)
+        return self._fever_start is not None
+
+    def inflamed(self, host: str, now: float) -> bool:
+        return bool(self._sensors(host, now))
+
+    def thresholds(self, host: str, now: float) -> dict:
+        if self.inflamed(host, now):
+            return INFLAMED
+        if self.fever_active(now):
+            return FEVER
+        return NORMAL
+
     # ---- inputs ----
     def ingest(self, fact, now: float) -> list[Proposal]:
         """Take one validated fact. Returns any new proposals."""
@@ -121,22 +172,27 @@ class Brain:
         except br.BarrierError:
             return self._emit([Proposal("collect_evidence", "unknown", "invalid-fact", ("host-log",), 1)])
         kind, host = fact["kind"], fact["host"]
+        th = self.thresholds(host, now)  # decided BEFORE this event adds evidence
         out = []
         if kind == "injection_attempt":
             self._note(host, "host-log", now)
             out.append(Proposal("collect_evidence", host, "injection-attempt", ("host-log",), 1))
         elif kind == "login_failed":
-            q = self._fails[(host, fact["src_ip"])]
+            key = (host, fact["src_ip"])
+            q = self._fails[key]
             q.append(now)
             self._prune_times(q, now)
-            if len(q) == BRUTE_FORCE_THRESHOLD:
+            if len(q) == 1:
+                self._bf_alerted.discard(key)  # a fresh burst
+            if len(q) >= th["brute_force"] and key not in self._bf_alerted:
+                self._bf_alerted.add(key)
                 self._note(host, "host-log", now)
                 out.append(Proposal("watch", host, "brute-force", ("host-log",), len(q)))
         elif kind == "login_success":
             q = self._fails.get((host, fact["src_ip"]))
             if q is not None:
                 self._prune_times(q, now)
-                if len(q) >= BRUTE_FORCE_THRESHOLD:
+                if len(q) >= th["brute_force"]:
                     self._note(host, "host-log", now)
                     self._suspicious[host] = now
                     out.append(self._escalate(host, "login-after-brute-force", now))
@@ -146,7 +202,7 @@ class Brain:
                       else "account-after-suspicious-login")
             out.append(self._escalate(host, reason, now))
         elif kind == "lateral_movement":
-            out.append(self._network(fact, host, now))
+            out.append(self._network(fact, host, now, th))
         elif kind == "agent_anomaly":
             out.append(self._agent(fact, host, now))
         elif kind == "group_added" and fact["group"] != "other":
@@ -155,11 +211,11 @@ class Brain:
               and fact["child"] in br.SHELLS):
             out.append(self._damage(host, "process", "service-spawned-shell", now))
         elif (kind == "file_burst" and fact["window"] <= MASS_WINDOW
-              and (fact["modified"] >= MASS_MODIFIED or fact["renamed"] >= MASS_RENAMED)):
+              and (fact["modified"] >= th["mass_modified"] or fact["renamed"] >= th["mass_renamed"])):
             out.append(self._damage(host, "file", "mass-file-change", now))
         return self._emit(out)
 
-    def _network(self, fact, host, now):
+    def _network(self, fact, host, now, th):
         if host == "unknown":
             # Source not in our inventory: we cannot act on it, only watch
             return Proposal("watch", "unknown", "lateral-movement", ("network",), 1)
@@ -169,7 +225,7 @@ class Brain:
         n = len(self._evidence[host])
         if len(sensors) >= 2 and fact["confidence"] >= CONFIRM_CONFIDENCE:
             return Proposal("isolate", host, "lateral-movement-confirmed", sensors, n)
-        if fact["confidence"] >= DECOY_CONFIDENCE:
+        if fact["confidence"] >= th["decoy"]:
             return Proposal("deploy_decoy", host, "lateral-movement", sensors, n)
         return Proposal("watch", host, "lateral-movement", sensors, n)
 

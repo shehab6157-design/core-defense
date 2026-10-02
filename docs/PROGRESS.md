@@ -117,3 +117,11 @@ Open items carried forward:
 - NOISY DAY (synthetic, seed 7): see test output for raw alerts -> pages, real attack paged
   (real-data evaluation still to do)
 - FIX: show threshold 2.0 -> 1.5 (edge-of-threshold bug caught by tests). Noisy day: 303 raw -> 5 pages (98% less), attack paged
+
+### Step 3c - Inflammation + fever (done 2026-10-02)
+- Inflammation: host with active suspicious evidence uses lower thresholds (local, cools in 5 min)
+- Fever: 3+ hosts in trouble -> network-wide lower thresholds for 15 min, then cools down
+- Bounded: fixed floors, fever capped at 1 h + 30 min cooldown (attacker can't keep it hot forever)
+- Two-sensor rule for isolate NEVER weakened (tested during fever)
+- Same 3 failed logins: normal host -> 0 alerts, inflamed host -> 1
+- Lesson: 2 test mistakes (inflaming via ring added a 2nd sensor) - brain correctly chose isolate; tests fixed
