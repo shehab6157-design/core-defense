@@ -84,9 +84,16 @@ def create_ca(directory: Path):
     return key, cert
 
 
-def load_ca(directory: Path):
+def load_ca(directory: Path, password: str | None = None):
     directory = Path(directory)
-    key = serialization.load_pem_private_key((directory / "ca.key").read_bytes(), password=None)
+    data = (directory / "ca.key").read_bytes()
+    encrypted = b"ENCRYPTED" in data
+    if encrypted and not password:
+        raise IdentityError("CA key is encrypted - passphrase required")
+    try:
+        key = serialization.load_pem_private_key(data, password=password.encode() if encrypted else None)
+    except (ValueError, TypeError):
+        raise IdentityError("could not unlock CA key (wrong passphrase?)") from None
     cert = x509.load_pem_x509_certificate((directory / "ca.crt").read_bytes())
     return key, cert
 
@@ -159,3 +166,18 @@ def verify(cert, ca_cert, expected_role: str | None = None, now: dt.datetime | N
     if expected_role is not None and role != expected_role:
         raise IdentityError(f"role mismatch: expected {expected_role}, got {role}")
     return name, role
+
+
+# ---------- Phase 5a: protect the root of trust (T12) ----------
+
+MIN_PASSPHRASE = 12
+
+
+def protect_ca(directory: Path, passphrase: str) -> None:
+    """Encrypt an unencrypted CA key in place. A stolen copy is useless without the passphrase."""
+    if not isinstance(passphrase, str) or len(passphrase) < MIN_PASSPHRASE:
+        raise IdentityError(f"passphrase must be at least {MIN_PASSPHRASE} characters")
+    key, _ = load_ca(directory)  # fails if it is already encrypted
+    pem = key.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8,
+                            serialization.BestAvailableEncryption(passphrase.encode()))
+    _write_private(Path(directory) / "ca.key", pem)

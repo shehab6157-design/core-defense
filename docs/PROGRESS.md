@@ -156,3 +156,11 @@ Open items carried forward:
 ## PHASE 4 COMPLETE (2026-10-02)
 - Open: camouflage/decoys are policy engines; live listeners deferred to the demo
 - Open: revocation list is in-memory; must be shared across arms (ring) before multi-machine
+
+## Phase 5 - Survival
+### Step 5a - Short life: rotation + CA key protection (done 2026-10-02)
+- Components renew when < 25% of cert life remains; replaced cert is RETIRED
+- Retired key still time-valid but used -> refused + "retired-key-in-use" alarm (copied key)
+- Expired key used -> "expired-key-in-use" alarm
+- CA key encrypted with passphrase (12+ chars); wrong/missing passphrase refused (T12 partly closed)
+- Real dev CA now encrypted; issuing asks for the passphrase
