@@ -141,3 +141,7 @@ ALLOWED["approval"] = {"operator"}
 
 # Operator tolerance for known-harmless low-level alert patterns
 ALLOWED["tolerance"] = {"operator"}
+
+
+# Operator can mark an arm as captured
+ALLOWED["quarantine"] = {"operator"}

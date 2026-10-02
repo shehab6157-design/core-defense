@@ -145,3 +145,14 @@ Open items carried forward:
 - Caps: 3 per attacker, 50 total; allowlisted scanners ignored; decoys passive, no real secrets
 - MIMIC STORY: lateral movement -> decoy server planted -> touched -> isolate (network + decoy)
 - Note: per-attacker cap (3) can't be exceeded by today's fact types; mechanism tested with cap=2
+
+### Step 4c - Captured arm as bait (done 2026-10-02)
+- Capture detected when an arm reports 'clean' twice while 2 independent sensors see trouble
+  (arm's own host logs never count as independent); or by signed operator quarantine
+- Captured arm revoked (never trusted, even with valid cert) but left running as bait
+- Attacker playbook recorded as type/size/time/digest only - no attacker text stored
+- Clean replacement arm gets fresh identity (arm-02 -> arm-02-r1 -> arm-02-r2)
+
+## PHASE 4 COMPLETE (2026-10-02)
+- Open: camouflage/decoys are policy engines; live listeners deferred to the demo
+- Open: revocation list is in-memory; must be shared across arms (ring) before multi-machine
