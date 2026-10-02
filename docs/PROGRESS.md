@@ -164,3 +164,11 @@ Open items carried forward:
 - Expired key used -> "expired-key-in-use" alarm
 - CA key encrypted with passphrase (12+ chars); wrong/missing passphrase refused (T12 partly closed)
 - Real dev CA now encrypted; issuing asks for the passphrase
+
+### Step 5b - Regeneration from signed image (done 2026-10-02)
+- Release manifest (SHA-256 of every code file) signed by trusted operator
+- Ring admission refuses modified / missing / unexpected code files
+- Regeneration verifies the clean image first, restores files, moves unexpected
+  files to .quarantine/ (evidence, never run), re-verifies before admission
+- Planted symlinks replaced, never written through; path traversal rejected
+- Limit: manifest signed with operator identity (max 7 days); production needs offline release key
