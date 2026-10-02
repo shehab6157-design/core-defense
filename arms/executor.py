@@ -161,3 +161,8 @@ REASON_TEXT.update({
     "mass-file-change": "a very large number of files changed in a short time, a common sign of ransomware",
 })
 SENSOR_TEXT.update({"process": "process activity", "file": "file activity"})
+
+
+# ---------- Phase 4b wording ----------
+REASON_TEXT["decoy-touched"] = "someone used a decoy that no legitimate user would ever touch"
+SENSOR_TEXT["decoy"] = "decoy tripwires"

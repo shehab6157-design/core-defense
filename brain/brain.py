@@ -26,7 +26,7 @@ from barrier import barrier as br
 
 ACTIONS = ("watch", "collect_evidence", "deploy_decoy", "limit_access", "isolate")
 STRONG = frozenset({"isolate"})
-SENSORS = frozenset({"host-log", "ring", "network", "agent", "process", "file"})
+SENSORS = frozenset({"host-log", "ring", "network", "agent", "process", "file", "decoy"})
 REASONS = frozenset({
     "injection-attempt", "brute-force", "login-after-brute-force",
     "privilege-after-suspicious-login", "account-after-suspicious-login",
@@ -34,6 +34,7 @@ REASONS = frozenset({
     "lateral-movement", "lateral-movement-confirmed",
     "agent-anomaly", "agent-anomaly-confirmed",
     "service-spawned-shell", "privilege-granted", "mass-file-change",
+    "decoy-touched",
 })
 WINDOW = 300.0          # seconds of memory for correlation (also inflammation length)
 CONFIRM_CONFIDENCE = 50 # with a second sensor, at or above this -> isolate (never adapted)
@@ -213,6 +214,12 @@ class Brain:
         elif (kind == "file_burst" and fact["window"] <= MASS_WINDOW
               and (fact["modified"] >= th["mass_modified"] or fact["renamed"] >= th["mass_renamed"])):
             out.append(self._damage(host, "file", "mass-file-change", now))
+        elif kind == "decoy_touched":
+            if host == "unknown":
+                # Outside attacker: we cannot act on them, but we keep the evidence
+                out.append(Proposal("collect_evidence", "unknown", "decoy-touched", ("decoy",), 1))
+            else:
+                out.append(self._damage(host, "decoy", "decoy-touched", now))
         return self._emit(out)
 
     def _network(self, fact, host, now, th):

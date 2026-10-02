@@ -269,3 +269,9 @@ GPASSWD_ADD = re.compile(r"user (?P<user>\S{1,64}) added by \S{1,64} to group (?
 SCHEMA["group_added"] = {"user": _USER, "group": _enum(*ADMIN_GROUPS, "other")}
 SCHEMA["process_spawn"] = {"parent": _ident("proc", PROC_NAMES), "child": _ident("proc", PROC_NAMES), "user": _USER}
 SCHEMA["file_burst"] = {"modified": _int_range(0, 10**7), "renamed": _int_range(0, 10**7), "window": _int_range(1, 3600)}
+
+
+# ---------- Phase 4b: decoy tripwires ----------
+
+DECOY_KINDS = ("honey-credential", "decoy-host", "honey-admin", "honey-files", "honey-tool")
+SCHEMA["decoy_touched"] = {"decoy_kind": _enum(*DECOY_KINDS), "src_ip": _ip}

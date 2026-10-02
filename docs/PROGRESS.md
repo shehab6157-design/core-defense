@@ -137,3 +137,11 @@ Open items carried forward:
 - Bait hosts get a consistent personality per host, with that personality's own banners
 - Fixes: SSH-2.0 is the required protocol id (test corrected); decoys now use their personality banners
 - Policy engine only (passive); live socket wiring deferred to the demo
+
+### Step 4b - Mimic: attacker-tailored decoys (done 2026-10-02)
+- Decoy chosen by what each attacker hunts (credentials, remote access, admin, files, AI tools)
+- Unique secret token per decoy; touch = near-certain evidence (new 'decoy' sensor)
+- Internal toucher -> limit_access / isolate with 2nd sensor; outside toucher -> collect_evidence
+- Caps: 3 per attacker, 50 total; allowlisted scanners ignored; decoys passive, no real secrets
+- MIMIC STORY: lateral movement -> decoy server planted -> touched -> isolate (network + decoy)
+- Note: per-attacker cap (3) can't be exceeded by today's fact types; mechanism tested with cap=2
