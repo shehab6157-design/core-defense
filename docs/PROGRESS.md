@@ -129,3 +129,11 @@ Open items carried forward:
 ## PHASE 3 COMPLETE (2026-10-02)
 - Open: process/file sensors are adapters only (real auditd/inotify monitors still to build)
 - Open: noisy-day result is synthetic; real-data evaluation still to do
+
+## Phase 4 - Disguise
+### Step 4a - Camouflage (done 2026-10-02)
+- Real banners normalized to generic (no version/OS): "nginx/1.18.0 (Ubuntu)" -> "Server: web"
+- Real host shows only the services it runs; everything else looks closed
+- Bait hosts get a consistent personality per host, with that personality's own banners
+- Fixes: SSH-2.0 is the required protocol id (test corrected); decoys now use their personality banners
+- Policy engine only (passive); live socket wiring deferred to the demo
