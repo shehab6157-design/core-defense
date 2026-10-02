@@ -125,3 +125,7 @@ Open items carried forward:
 - Two-sensor rule for isolate NEVER weakened (tested during fever)
 - Same 3 failed logins: normal host -> 0 alerts, inflamed host -> 1
 - Lesson: 2 test mistakes (inflaming via ring added a 2nd sensor) - brain correctly chose isolate; tests fixed
+
+## PHASE 3 COMPLETE (2026-10-02)
+- Open: process/file sensors are adapters only (real auditd/inotify monitors still to build)
+- Open: noisy-day result is synthetic; real-data evaluation still to do
