@@ -172,3 +172,15 @@ Open items carried forward:
   files to .quarantine/ (evidence, never run), re-verifies before admission
 - Planted symlinks replaced, never written through; path traversal rejected
 - Limit: manifest signed with operator identity (max 7 days); production needs offline release key
+
+### Step 5c - Tardigrade mode + last breath (done 2026-10-02)
+- Survival mode on 2+ silent peers / 50+ rejected msgs per min / 90%+ load:
+  keeps only detection, evidence, ring; exits only after 5 calm minutes (no flapping)
+- Last breath: signed recent evidence sent to peers when stop is noticeable; sent once;
+  peers validate every fact (smuggled facts rejected)
+- REAL PROCESS TEST: SIGTERM -> last breath delivered and verified;
+  SIGKILL -> nothing can be sent (honest limit) -> ring silence alarm covers it
+
+## PHASE 5 COMPLETE (2026-10-02)
+- Open: rotation/regeneration/survival are libraries; long-running arm service wiring still to build
+- Open: release manifests use operator identity; offline release key for production
