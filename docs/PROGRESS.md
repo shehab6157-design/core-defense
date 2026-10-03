@@ -210,3 +210,13 @@ Open items carried forward:
 
 ## PHASE 6 COMPLETE (2026-10-03)
 - Open: verdicts/corrections/memories are libraries; operator UI to send them comes in Phase 7
+
+## Phase 7 - Face + proof
+### Step 7a part 1 - Arm service (done 2026-10-03)
+- One long-running process wiring ring, log tailer, barrier, memory, brain copy,
+  gate, safety, executor (dry-run), audit trail, survival
+- Log tailer follows auth.log from the end; handles rotation + truncation; caps endless lines
+- Refuses to start with a missing or wrong identity; barrier salt created mode 600
+- Tested: real log lines -> detection; signed proposal -> audited action; forged message
+  rejected; operator memory -> known attacker in logs; silent peers -> survival mode
+- LIVE: two services on real UDP sockets exchange signed heartbeats
