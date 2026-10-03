@@ -193,3 +193,11 @@ Open items carried forward:
 - Every version kept; rollback; correction flood (>20/cycle) capped + alarm
 - STOLEN-KEY POISONING: 50 signed false-alarm corrections -> threshold 5 -> 6 only,
   1 adopted / 9 refused, 5/5 known attacks still detected
+
+### Step 6b - Immune memory + vaccination (done 2026-10-03)
+- Operator-confirmed incident addresses broadcast as signed memory; every arm recognizes them
+- Only operator can create memories; expire (7 d default, 30 d max); bounded size
+- Memory alone -> limit_access; memory + another sensor -> isolate
+- Vaccination: confirmed attack -> permanent regression scenario
+- RESULT: 3/3 arms recognize attacker after one broadcast; with a vaccine,
+  learning stops at decoy threshold 75 instead of drifting to 85

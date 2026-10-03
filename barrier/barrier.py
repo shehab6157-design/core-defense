@@ -275,3 +275,7 @@ SCHEMA["file_burst"] = {"modified": _int_range(0, 10**7), "renamed": _int_range(
 
 DECOY_KINDS = ("honey-credential", "decoy-host", "honey-admin", "honey-files", "honey-tool")
 SCHEMA["decoy_touched"] = {"decoy_kind": _enum(*DECOY_KINDS), "src_ip": _ip}
+
+
+# ---------- Phase 6b: immune memory ----------
+SCHEMA["known_attacker"] = {"src_ip": _ip}

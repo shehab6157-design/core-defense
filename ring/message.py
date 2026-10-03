@@ -153,3 +153,8 @@ ALLOWED["feedback"] = {"operator"}
 
 # Operator corrections that the learning system may learn from
 ALLOWED["feedback"] = {"operator"}
+
+
+# Operator-confirmed immune memory and vaccines
+ALLOWED["memory"] = {"operator"}
+ALLOWED["vaccine"] = {"operator"}

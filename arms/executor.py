@@ -166,3 +166,8 @@ SENSOR_TEXT.update({"process": "process activity", "file": "file activity"})
 # ---------- Phase 4b wording ----------
 REASON_TEXT["decoy-touched"] = "someone used a decoy that no legitimate user would ever touch"
 SENSOR_TEXT["decoy"] = "decoy tripwires"
+
+
+# ---------- Phase 6b wording ----------
+REASON_TEXT["known-attacker"] = "an address from a confirmed past attack appeared again"
+SENSOR_TEXT["memory"] = "immune memory of past attacks"
