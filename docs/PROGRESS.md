@@ -220,3 +220,13 @@ Open items carried forward:
 - Tested: real log lines -> detection; signed proposal -> audited action; forged message
   rejected; operator memory -> known attacker in logs; silent peers -> survival mode
 - LIVE: two services on real UDP sockets exchange signed heartbeats
+
+### Step 7a part 2 - Hardened system service (done 2026-10-03)
+- Runs as systemd service, own no-login user, CA key never copied, adm group for auth.log only
+- Sandbox: read-only system, no capabilities, syscall filter, network limited to localhost + lab
+- systemd-analyze security exposure: 1.2 OK (lower is safer; typical services score 9+)
+- LIVE on real /var/log/auth.log: injection line -> collect_evidence; varied-port brute force ->
+  watch -> limit_access
+- REAL-SYSTEM FINDING: rsyslog collapses identical lines ("message repeated N times"),
+  hiding failures; barrier now expands them (capped at 50). Verified live after fix.
+- Open: certificate renewal not automated in the service yet (7-day identity, re-issue weekly)

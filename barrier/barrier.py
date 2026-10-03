@@ -207,13 +207,14 @@ class Barrier:
         length = len(raw)
         line = raw.rstrip("\r\n")[:MAX_LINE]
         digest = hashlib.sha256(raw.encode("utf-8", "replace")).hexdigest()[:16]
-        host, parsed = "unknown", None
+        host, parsed, repeat = "unknown", None, 1
         if m := PREFIX.fullmatch(line):
             host = self._host(m["host"])
-            parsed = self._parse(m["prog"], m["msg"])
+            text, repeat = _unrepeat(m["msg"])
+            parsed = self._parse(m["prog"], text)
         if parsed:
             kind, fields = parsed
-            facts = [{"kind": kind, "host": host, **fields}]
+            facts = [{"kind": kind, "host": host, **fields} for _ in range(repeat)]
         else:
             facts = [{"kind": "unparsed", "host": host, "length": length, "digest": digest}]
         hits = detect_injection(raw[:MAX_SCAN])
@@ -279,3 +280,15 @@ SCHEMA["decoy_touched"] = {"decoy_kind": _enum(*DECOY_KINDS), "src_ip": _ip}
 
 # ---------- Phase 6b: immune memory ----------
 SCHEMA["known_attacker"] = {"src_ip": _ip}
+
+
+# ---------- Phase 7a: rsyslog "message repeated N times" lines ----------
+MAX_REPEAT = 50
+REPEATED = re.compile(r"message repeated (?P<n>\d{1,9}) times: \[ ?(?P<inner>.*)\]")
+
+
+def _unrepeat(text: str):
+    """'message repeated 4 times: [ X]' -> (X, 4); anything else -> (text, 1). Capped."""
+    if r := REPEATED.fullmatch(text):
+        return r["inner"], max(1, min(int(r["n"]), MAX_REPEAT))
+    return text, 1
