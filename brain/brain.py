@@ -163,7 +163,7 @@ class Brain:
             return INFLAMED
         if self.fever_active(now):
             return FEVER
-        return NORMAL
+        return {**NORMAL, **getattr(self, "learned", {}).get(host, {})}
 
     # ---- inputs ----
     def ingest(self, fact, now: float) -> list[Proposal]:

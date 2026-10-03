@@ -145,3 +145,11 @@ ALLOWED["tolerance"] = {"operator"}
 
 # Operator can mark an arm as captured
 ALLOWED["quarantine"] = {"operator"}
+
+
+# Operator corrections that the learning system may learn from
+ALLOWED["feedback"] = {"operator"}
+
+
+# Operator corrections that the learning system may learn from
+ALLOWED["feedback"] = {"operator"}

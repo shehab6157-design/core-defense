@@ -184,3 +184,12 @@ Open items carried forward:
 ## PHASE 5 COMPLETE (2026-10-02)
 - Open: rotation/regeneration/survival are libraries; long-running arm service wiring still to build
 - Open: release manifests use operator identity; offline release key for production
+
+## Phase 6 - Learning (adaptive immunity)
+### Step 6a - Safe learning from corrections (done 2026-10-03)
+- Learns only from signed trusted-operator corrections; only during sleep (never fever/survival)
+- One step per cycle, hard bounds (floors = inflammation floors); per-host settings
+- Regression suite gate: any version that misses a known attack is refused
+- Every version kept; rollback; correction flood (>20/cycle) capped + alarm
+- STOLEN-KEY POISONING: 50 signed false-alarm corrections -> threshold 5 -> 6 only,
+  1 adopted / 9 refused, 5/5 known attacks still detected
