@@ -230,3 +230,11 @@ Open items carried forward:
 - REAL-SYSTEM FINDING: rsyslog collapses identical lines ("message repeated N times"),
   hiding failures; barrier now expands them (capped at 50). Verified live after fix.
 - Open: certificate renewal not automated in the service yet (7-day identity, re-issue weekly)
+
+### Step 7b part 1 - Real firewall backend (done 2026-10-03)
+- nftables backend: isolate = drop all in/out; limit_access = drop new inbound;
+  management + ring peers + loopback always allowed; acts only on own host; atomic ruleset
+- Kernel-level dead-man switch: blocks live in TIMED kernel sets, auto-expire even if service dies
+- LIVE TEST on dev VM: before ping OK -> isolate: 100% loss while SSH (management) stayed up,
+  kernel set showed countdown -> after 120 s kernel lifted block itself, ping OK again
+- Limits: IPv4 only; renewal does not yet extend kernel timer
