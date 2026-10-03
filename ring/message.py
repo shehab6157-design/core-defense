@@ -158,3 +158,7 @@ ALLOWED["feedback"] = {"operator"}
 # Operator-confirmed immune memory and vaccines
 ALLOWED["memory"] = {"operator"}
 ALLOWED["vaccine"] = {"operator"}
+
+
+# Operator verdicts on executed actions (earned autonomy)
+ALLOWED["verdict"] = {"operator"}

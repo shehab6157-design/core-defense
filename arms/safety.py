@@ -75,7 +75,7 @@ class SafeExecutor:
         cur = self.executor.active_for(p.host)
         if cur and LEVEL[cur.action] >= LEVEL[p.action]:
             return self.executor.apply(p, now)  # renewal of an authorized action
-        if p.host in self.protected:
+        if p.host in self.protected and not (getattr(self, "autonomy", None) and self.autonomy.allows(p.action)):
             return self._hold(p, now, "protected-host")
         while self._recent and now - self._recent[0] > self.window:
             self._recent.popleft()

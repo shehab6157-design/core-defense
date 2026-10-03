@@ -201,3 +201,12 @@ Open items carried forward:
 - Vaccination: confirmed attack -> permanent regression scenario
 - RESULT: 3/3 arms recognize attacker after one broadcast; with a vaccine,
   learning stops at decoy threshold 75 instead of drifting to 85
+
+### Step 6c - Earned autonomy (done 2026-10-03)
+- Signed operator verdicts per executed action (each judged once)
+- limit_access earns autonomy on protected hosts: 20+ correct, score 15+ (wrong = -5), clean last 10
+- One wrong verdict revokes instantly; regained after 10 clean verdicts
+- Hard limit: isolate on protected hosts never autonomous; breaker still applies to autonomous actions
+
+## PHASE 6 COMPLETE (2026-10-03)
+- Open: verdicts/corrections/memories are libraries; operator UI to send them comes in Phase 7
