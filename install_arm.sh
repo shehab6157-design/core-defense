@@ -1,11 +1,19 @@
 #!/usr/bin/env bash
-# Install the core-defense arm as a locked-down systemd service (Phase 7a part 2).
+# Install the core-defense arm as a locked-down systemd service (Phase 7a/7b).
 # Run on the VM:  sudo bash install_arm.sh
+# Options (environment variables):
+#   FIREWALL=1      use the REAL nftables backend (default 0 = dry-run)
+#   MGMT=IP         management address that is ALWAYS allowed (default 192.168.109.1)
+#   DEADMAN=SECS    kernel dead-man timeout for blocks (default 900)
 set -euo pipefail
 
 SRC="${SRC:-/home/shehab-shibli/core-defense}"
 NAME="${NAME:-arm-01}"
+FIREWALL="${FIREWALL:-0}"
+MGMT="${MGMT:-192.168.109.1}"
+DEADMAN="${DEADMAN:-900}"
 HOSTNAME_IN_LOGS="$(hostname)"
+OWN_IP="$(hostname -I | awk '{print $1}')"
 
 echo "== 1. service user (no login, no home)"
 id coredefense >/dev/null 2>&1 || useradd --system --no-create-home --shell /usr/sbin/nologin coredefense
@@ -35,7 +43,9 @@ if [ -e /etc/core-defense/secrets/ca.key ]; then
     echo "!! CA key found in service secrets - refusing"; exit 1
 fi
 
-echo "== 4. config"
+echo "== 4. config (firewall: $([ "$FIREWALL" = 1 ] && echo REAL || echo dry-run))"
+FW_ENABLED=false
+[ "$FIREWALL" = 1 ] && FW_ENABLED=true
 cat > "/etc/core-defense/$NAME.json" << EOF
 {
   "name": "$NAME",
@@ -50,12 +60,20 @@ cat > "/etc/core-defense/$NAME.json" << EOF
   "trusted_brains": ["brain-01"],
   "operators": ["op-shehab"],
   "protected_hosts": [],
-  "responsible_hosts": ["$HOSTNAME_IN_LOGS"]
+  "responsible_hosts": ["$HOSTNAME_IN_LOGS"],
+  "firewall": {"enabled": $FW_ENABLED, "own_ip": "$OWN_IP", "management": ["$MGMT"], "deadman": $DEADMAN}
 }
 EOF
 chmod 0644 "/etc/core-defense/$NAME.json"
 
 echo "== 5. hardened systemd unit"
+if [ "$FIREWALL" = 1 ]; then
+    CAPS="CAP_NET_ADMIN"
+    FAMILIES="AF_INET AF_UNIX AF_NETLINK"
+else
+    CAPS=""
+    FAMILIES="AF_INET AF_UNIX"
+fi
 cat > /etc/systemd/system/core-defense-arm.service << EOF
 [Unit]
 Description=core-defense arm ($NAME)
@@ -77,8 +95,8 @@ UMask=0077
 
 # --- sandbox ---
 NoNewPrivileges=yes
-CapabilityBoundingSet=
-AmbientCapabilities=
+CapabilityBoundingSet=$CAPS
+AmbientCapabilities=$CAPS
 ProtectSystem=strict
 ProtectHome=yes
 PrivateTmp=yes
@@ -90,7 +108,7 @@ ProtectControlGroups=yes
 ProtectClock=yes
 ProtectHostname=yes
 ProtectProc=invisible
-RestrictAddressFamilies=AF_INET AF_UNIX
+RestrictAddressFamilies=$FAMILIES
 RestrictNamespaces=yes
 RestrictRealtime=yes
 RestrictSUIDSGID=yes
@@ -105,9 +123,10 @@ IPAddressAllow=localhost 192.168.109.0/24
 WantedBy=multi-user.target
 EOF
 
-echo "== 6. start"
+echo "== 6. (re)start"
 systemctl daemon-reload
-systemctl enable --now core-defense-arm
+systemctl enable core-defense-arm >/dev/null
+systemctl restart core-defense-arm
 sleep 3
 systemctl --no-pager --lines=5 status core-defense-arm || true
 echo "== done"

@@ -1,4 +1,4 @@
-"""Arm service: every component wired into one long-running process (Phase 7a).
+"""Arm service: every component wired into one long-running process (Phase 7a/7b).
 
   ring       signed heartbeats to peers; signed messages in
   logs       follows the host's auth log (handles rotation and truncation)
@@ -7,7 +7,8 @@
   brain      this arm's OWN brain copy (also used by the gate for corroboration)
   gate       signed brain proposals are verified before anything happens
   safety     protected hosts + circuit breaker
-  executor   reversible, expiring actions (dry-run backend until Phase 7b)
+  executor   reversible, expiring actions - dry-run, or REAL nftables when the
+             config has "firewall": {"enabled": true, ...}
   audit      every decision and action in the hash-chained trail
   survival   tardigrade mode under heavy attack; last breath on shutdown
 
@@ -27,6 +28,8 @@ from cryptography import x509
 from cryptography.hazmat.primitives import serialization
 
 from arms import audited as au
+from arms import executor as ex
+from arms import nft_backend as nb
 from audit import trail as at
 from barrier import barrier as br
 from brain import brain as bn
@@ -38,6 +41,8 @@ from survival import tardigrade as tg
 
 REQUIRED = {"name", "host", "bind", "port", "peers", "inventory", "secrets", "auth_log",
             "state_dir", "trusted_brains", "operators", "protected_hosts", "responsible_hosts"}
+OPTIONAL = {"firewall"}
+FIREWALL_FIELDS = {"enabled", "own_ip", "management", "deadman"}
 TASKS = {"detection", "evidence", "ring", "decoys", "triage", "learning"}
 MAX_PARTIAL_LINE = 65536
 
@@ -53,8 +58,8 @@ def _parse_addr(s: str) -> tuple:
 
 def load_config(path) -> dict:
     cfg = json.loads(Path(path).read_text())
-    if not isinstance(cfg, dict) or set(cfg) != REQUIRED:
-        raise ServiceError(f"config fields must be exactly: {sorted(REQUIRED)}")
+    if not isinstance(cfg, dict) or not (REQUIRED <= set(cfg) <= REQUIRED | OPTIONAL):
+        raise ServiceError(f"config fields must be: {sorted(REQUIRED)} (+ optional {sorted(OPTIONAL)})")
     try:
         idn.check_name(cfg["name"])
         for n in cfg["peers"]:
@@ -68,6 +73,12 @@ def load_config(path) -> dict:
     port = cfg["port"]
     if isinstance(port, bool) or not isinstance(port, int) or not 1024 <= port <= 65535:
         raise ServiceError("port must be 1024-65535")
+    fw = cfg.get("firewall")
+    if fw is not None:
+        if not isinstance(fw, dict) or set(fw) != FIREWALL_FIELDS or not isinstance(fw["enabled"], bool):
+            raise ServiceError(f"firewall fields must be exactly: {sorted(FIREWALL_FIELDS)}")
+        if fw["enabled"] and (not isinstance(fw["management"], list) or not fw["management"]):
+            raise ServiceError("firewall needs at least one management address")
     return cfg
 
 
@@ -99,7 +110,7 @@ class LogTailer:
 
 
 class ArmService:
-    def __init__(self, cfg: dict, now: float | None = None):
+    def __init__(self, cfg: dict, now: float | None = None, backend=None):
         self.cfg = cfg
         now = time.monotonic() if now is None else now
         sec, state = Path(cfg["secrets"]), Path(cfg["state_dir"])
@@ -114,16 +125,17 @@ class ArmService:
         if name != cfg["name"]:
             raise ServiceError(f"certificate is for {name}, not {cfg['name']}")
 
+        self.peers = {n: _parse_addr(a) for n, a in cfg["peers"].items()}
+        self.backend = backend if backend is not None else self._make_backend()
         self.barrier = br.Barrier(self._salt(sec), cfg["inventory"])
         self.trail = at.AuditTrail(state / "audit.jsonl")
-        inner = au.AuditedExecutor(self.trail)
+        inner = au.AuditedExecutor(self.trail, backend=self.backend)
         self.executor = au.AuditedSafeExecutor(self.trail, inner, self.ca_cert,
                                                operators=cfg["operators"], protected_hosts=cfg["protected_hosts"])
         self.brain = bn.Brain(cfg["inventory"])
         self.gate = au.AuditedGate(self.trail, self.ca_cert, cfg["trusted_brains"],
                                    cfg["responsible_hosts"], self.brain, self.executor)
         self.memory = mem.ImmuneMemory(self.ca_cert, cfg["operators"])
-        self.peers = {n: _parse_addr(a) for n, a in cfg["peers"].items()}
         self.monitor = hb.HeartbeatMonitor(list(self.peers), now=now)
         self.survival = tg.Tardigrade(TASKS)
         self.breath = tg.LastBreath(cfg["name"], self.role, self.key, self.cert,
@@ -135,6 +147,18 @@ class ArmService:
         self._mode = self.survival.mode
 
     # ---------- helpers ----------
+    def _make_backend(self):
+        fw = self.cfg.get("firewall") or {}
+        if not fw.get("enabled"):
+            return ex.DryRunBackend()
+        try:
+            b = nb.NftBackend(self.cfg["host"], fw["own_ip"], fw["management"],
+                              peers=[addr[0] for addr in self.peers.values()], deadman=fw["deadman"])
+            b.install()
+            return b
+        except nb.FirewallError as e:
+            raise ServiceError(f"firewall: {e}") from None
+
     @staticmethod
     def _salt(sec: Path) -> bytes:
         p = sec / "barrier.salt"
@@ -204,9 +228,15 @@ class ArmService:
                 self._log(f"ALERT {al.kind}: {al.peer} ({al.detail})")
             return "heartbeat"
         if m.type == "proposal":
-            d = self.gate.decide(raw, now)
+            try:
+                d = self.gate.decide(raw, now)
+            except nb.FirewallError as e:
+                self._log(f"FIREWALL ERROR: {e}")
+                return "firewall-error"
             what = f"{d.proposal.action} {d.proposal.host}" if d.proposal else "?"
             self._log(f"proposal {what} -> {d.reason}")
+            if d.accepted:
+                self._log(f"ACTION: {d.record.explanation}")
             return d.reason
         try:
             if m.type == "memory":
@@ -239,13 +269,15 @@ class ArmService:
         if mode != self._mode:
             self._log(f"MODE {self._mode} -> {mode}; running: {sorted(self.survival.running())}")
             self._mode = mode
-        self.executor.executor.tick(now)
+        for rec in self.executor.executor.tick(now):
+            self._log(f"ACTION ENDED: {rec.action} {rec.host} ({rec.ended_by})")
         return mode
 
     def run(self) -> None:
         self.open_socket()
         self.breath.install()
-        self._log(f"started as {self.role}; peers: {', '.join(self.peers) or 'none'}; "
+        kind = "REAL nftables" if isinstance(self.backend, nb.NftBackend) else "dry-run"
+        self._log(f"started as {self.role}; firewall: {kind}; peers: {', '.join(self.peers) or 'none'}; "
                   f"watching {self.cfg['auth_log']}")
         next_beat = next_poll = 0.0
         while True:

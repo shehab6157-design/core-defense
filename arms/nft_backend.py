@@ -12,9 +12,9 @@ Safety design:
   - every blocking rule only applies while this host's address is in a TIMED
     kernel set. When the timeout passes, the KERNEL itself switches the block
     off - even if this service crashes or is killed (dead-man switch)
+  - renewing an action refreshes the kernel timer
   - the ruleset is replaced atomically (never half-applied)
-Honest limits: IPv4 only for now; renewing an action does not yet extend the
-kernel timer (wired in Phase 7b part 2).
+Honest limit: IPv4 only for now.
 
 CLI (needs root or CAP_NET_ADMIN):
   python -m arms.nft_backend install --own-ip IP --mgmt IP [--peer IP]
@@ -95,14 +95,28 @@ class NftBackend:
     def install(self) -> None:
         self.runner(self.ruleset())
 
+    def _element(self, action: str) -> str:
+        return f"{SETS[action]} {{ {self.own_ip} timeout {self.deadman}s }}"
+
     def apply(self, action: str, host: str) -> None:
         self.calls.append(("apply", action, host))
         if host != self.own_host:
             raise FirewallError(f"can only act on own host {self.own_host}, not {host}")
         if action not in SETS:
             return  # no firewall change for weaker actions
-        self.runner(f"add element inet {TABLE} {SETS[action]} {{ {self.own_ip} timeout {self.deadman}s }}\n")
+        self.runner(f"add element inet {TABLE} {self._element(action)}\n")
         self.active.add((action, host))
+
+    def renew(self, action: str, host: str) -> None:
+        """Fresh evidence renewed the action: restart the kernel timer."""
+        self.calls.append(("renew", action, host))
+        if action not in SETS or host != self.own_host:
+            return
+        try:
+            self.runner(f"delete element inet {TABLE} {SETS[action]} {{ {self.own_ip} }}\n"
+                        f"add element inet {TABLE} {self._element(action)}\n")
+        except FirewallError:
+            self.runner(f"add element inet {TABLE} {self._element(action)}\n")  # timer had expired
 
     def undo(self, action: str, host: str) -> None:
         self.calls.append(("undo", action, host))

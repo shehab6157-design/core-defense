@@ -116,6 +116,8 @@ class Executor:
             return cur  # weaker evidence never downgrades an active response
         if cur and cur.action == p.action:
             cur.expires_at = max(cur.expires_at, now + TTL[p.action])  # renew
+            if hasattr(self.backend, "renew"):
+                self.backend.renew(p.action, p.host)
             return cur
         rec = ActionRecord(
             id=uuid.uuid4().hex[:12], action=p.action, host=p.host, reason=p.reason,

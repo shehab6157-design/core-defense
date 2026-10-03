@@ -238,3 +238,14 @@ Open items carried forward:
 - LIVE TEST on dev VM: before ping OK -> isolate: 100% loss while SSH (management) stayed up,
   kernel set showed countdown -> after 120 s kernel lifted block itself, ping OK again
 - Limits: IPv4 only; renewal does not yet extend kernel timer
+
+### Step 7b part 2 - Real firewall in the running service (done 2026-10-03)
+- Service uses real nftables when config enables it; one added permission (CAP_NET_ADMIN)
+- Exposure score with firewall: 1.5 OK (1.2 without) - honest cost of the permission
+- Renewals refresh the kernel timer; stopping the service never lifts a block (kernel timer does)
+- LIVE FULL CHAIN on real system:
+  brute force in real auth.log -> signed isolate proposal REFUSED (1 sensor, not corroborated)
+  -> operator signed immune memory -> attacker's next attempt = 2nd sensor
+  -> same proposal ACCEPTED -> real isolation (ping 100% loss, SSH stayed up)
+  -> kernel lifted it after 180 s -> every decision in the hash-chained audit trail
+- Lab tool tools/send.py signs one message as brain/operator (no special powers)
