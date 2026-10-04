@@ -260,3 +260,14 @@ Open items carried forward:
 - PROOF: attacker SSH went from instant "Permission denied" to timeout (exit code 124);
   operator SSH (192.168.109.1) stayed connected throughout; kernel auto-lifted the block
 - Audit trail: action-started isolate + proposal-decision accepted, hash-chained
+
+### Step 7c - Live network attack demo (done 2026-10-04)
+- victim-01 (own hostname/IP/CA, self-defending arm, REAL nftables) attacked by mcp-proxy
+  over the lab network with real SSH brute force (Kali VM files were missing; used sshpass loop)
+- Victim detected brute force unaided: watch (brute-force) sensors=['host-log']
+- Operator confirmed attacker (signed immune memory) -> known-attacker (memory sensor)
+- Two sensors -> brain proposed isolate; one sensor alone -> only limit_access
+- Signed proposal through gate -> ACCEPTED -> real firewall block
+- PROOF: attacker SSH went instant "Permission denied" -> timeout (exit 124);
+  operator SSH (192.168.109.1) stayed connected; kernel auto-lifted the block
+- Audit: action-started isolate + proposal-decision accepted, hash-chained
