@@ -1,7 +1,6 @@
 """Mimic: decoys tailored to what each attacker is hunting (Phase 4b).
 
-Like the mimic octopus choosing its disguise for the predator in front of
-it, Mimic watches each attacker's activity and plants the decoy they would
+Mimic watches each attacker's activity and plants the decoy they would
 want most. Every decoy carries a unique secret token. No legitimate user
 ever touches a decoy, so a touch becomes near-certain 'decoy_touched'
 evidence for the brain.

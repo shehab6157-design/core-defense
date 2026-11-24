@@ -1,7 +1,7 @@
 # Progress Log
 
 ## Phase 0 - Setup + threat model (done 2026-10-01)
-- Dev VM: Ubuntu 24.04, Python 3.12, private repo
+- Dev VM: Ubuntu 24.04, Python 3.12 (the repo was private while it was built)
 - Threat model v0.1 (T1-T16, R1-R10)
 - T15: key-only SSH, password + root login disabled (verified: Permission denied)
 
@@ -249,17 +249,6 @@ Open items carried forward:
   -> same proposal ACCEPTED -> real isolation (ping 100% loss, SSH stayed up)
   -> kernel lifted it after 180 s -> every decision in the hash-chained audit trail
 - Lab tool tools/send.py signs one message as brain/operator (no special powers)
-
-### Step 7c - Live Kali-style attack demo (done 2026-10-04)
-- Setup: victim-01 (cloned Ubuntu, self-defending arm, REAL nftables) attacked by mcp-proxy
-  over the lab network with real SSH brute force (sshpass loop; Kali VM files were missing)
-- Victim detected brute force unaided: watch (brute-force) sensors=['host-log']
-- Operator confirmed attacker (signed immune memory) -> known-attacker (memory sensor)
-- Two independent sensors -> brain proposed isolate; one sensor alone -> only limit_access
-- Signed brain proposal through the gate -> ACCEPTED -> real firewall block
-- PROOF: attacker SSH went from instant "Permission denied" to timeout (exit code 124);
-  operator SSH (192.168.109.1) stayed connected throughout; kernel auto-lifted the block
-- Audit trail: action-started isolate + proposal-decision accepted, hash-chained
 
 ### Step 7c - Live network attack demo (done 2026-10-04)
 - victim-01 (own hostname/IP/CA, self-defending arm, REAL nftables) attacked by mcp-proxy
