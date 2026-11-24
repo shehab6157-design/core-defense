@@ -64,7 +64,7 @@ sudo bash install_arm.sh               # dry run, no firewall changes
 sudo FIREWALL=1 bash install_arm.sh    # real nftables backend
 ```
 
-The script installs the arm as a locked down systemd service with its own user. Read it first and set `MGMT` to your own management address, which is always allowed through the firewall.
+The script installs the arm as a locked down systemd service with its own user. Read it first. Set `SRC` to where you cloned this repo, and `MGMT` to your own management address, which is always allowed through the firewall.
 
 ## Folders
 
